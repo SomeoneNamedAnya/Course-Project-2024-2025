@@ -3,7 +3,9 @@
 
 ## Структура репозитория
 -[Algorithm](#Algorithm)
+
 -[Data](#Data)
+
 -[Test](#Test)
 
 ## Algorithm
