@@ -1,0 +1,1 @@
+PATH_DATA_LOG = '../Data/BPI_Challenge_2019/BPI_Challenge_2019.xes'
