@@ -1,19 +1,22 @@
 import numpy as np
 import pandas as pd
+import config
 from sklearn.cluster import KMeans
 import random
+import preprocessing
 
 class Clustering:
-    '''
-        event_chains - [[case_id, event_seq: []]
 
-    '''
-    def __init__(self, event_chains: list, num_of_classes: int):
+    def __init__(self, num_of_classes: int):
         self.event_chains = list()
         self.division = list()
         self.num_of_classes = num_of_classes
 
     def fit(self, event_chains):
+        for i in range(len(event_chains)):
+            #print(event_chains[i][1] )
+            event_chains[i][1] = list(map(int, event_chains[i][1]))
+            event_chains[i][0] = int(event_chains[i][0])
         self.event_chains = event_chains
         return self
 
@@ -59,36 +62,21 @@ class Clustering:
         return self #.division
 
     def safe_as_scv(self, file):
-        main_table = pd.read_csv(file, sep=";")
-        #print(main_table.columns)
+        main_table = file
+
         link = [list() for _ in range(self.num_of_classes)]
         for i in range(main_table.shape[0]):
-            print(main_table.iloc[i].to_dict())
-            link[self.division[main_table['case_id'].iloc[i]]].append(main_table.iloc[i].to_dict())
+
+            link[self.division[int(main_table['case:concept:name_new'].loc[i])]].append(main_table.iloc[i].to_dict())
 
         for i in range(len(link)):
             pd.DataFrame(link[i]).to_csv("models/" + str(i) + ".csv", index=False)
+
+
 if __name__ == '__main__':
-    df = pd.read_csv("example.csv", sep=";")
-    df2 = df.groupby("case_id").agg({"event_id":list})
-    print(df2)
-    conv = df2.to_dict()
-    print(conv)
-    X = list()
-    for i in conv["event_id"].keys():
-        X.append([i, conv["event_id"][i]])
-    print(X)
-   # X = list([[0, [1, 2, 3, 4]], [1, [1, 2, 5, 4]], [2, [1, 2, 1, 2, 3, 4]],
-  #                [3, [5, 4]], [4, [1, 6, 7, 5, 4]], [5, [1, 5, 4]]])
-    Clustering(X, 2).fit(X).split('s', 3).safe_as_scv("example.csv")
 
-    # Обучаем модель
-    #kmeans = KMeans(n_clusters=2, random_state=0, n_init=10)
-    #kmeans.fit(X)
 
-    # Выводим результаты
-    #print(kmeans.labels_)  # Метки кластеров
-    #print(kmeans.cluster_centers_)  # Координаты центроидов
-    #t = [[1000, 1, 2, 3],[-101000, 1, 5, 8],[-101000, 20, 5, 8], [-101000, 31, 5, 8]]
+    unique_case, unique_activity, df, X = preprocessing.get_traces(config.PATH_DATA_LOG_SECOND_CSV)
 
-    #print(np.array([line[1:] for line in t]))
+    print("acasc")
+    Clustering(2).fit(X).split('s', 5).safe_as_scv(df)
