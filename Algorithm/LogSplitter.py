@@ -2,15 +2,16 @@ from gensim.models import Word2Vec
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import normalize
-from sklearn.cluster import HDBSCAN
 import numpy as np
 import pandas as pd
 
 
 class LogSplitter:
+
     """
-        The number of splitting part
-        method = kmeans | dbscan
+        Класс разбивающий журналы событий на поджурналы
+        Так как в основном использовался алгоритм kmeans он стоит по умолчанию
+        k - количество подклассов при разбиении 
     """
 
     def __init__(self, k, method="kmeans"):
@@ -25,7 +26,8 @@ class LogSplitter:
         self.method = method
 
     '''
-        Convert activity from event log to vector based on traces
+        Сопоставлении каждой активности встречающийся в traces вектора чисел длинны vector_size
+        sg - тип используемой модели для алгоритма word2vec: 0 - CBOW, 1 - Skip-gram
     '''
 
     def fit(self, traces, vector_size=10, sg=0):
@@ -41,15 +43,25 @@ class LogSplitter:
 
 
     '''
-        Splitting event log based on event log by using different clustering algorythm. 
+        Разбиение переданных трасс на k подпроцессов
+        log - dataframe с обязательными полями name_id - номер кейса и name_traces - список активностей - трасса
+        trace_parts - часть, задающая длинну окна от средней длинны всех трасс или медианной длинны
+        choose_func - 1 - используется медиана; 2 - используется среднее
     '''
 
     def transform(self, log, name_id='id', name_traces='traces', trace_parts=0.2, choose_func=1):
+
+        if name_id not in log.columns:
+            raise Exception("log doesn't have column " + name_id)
+        if name_traces not in log.columns:
+            raise Exception("log doesn't have column " + name_traces)
+        if trace_parts > 1 or trace_parts <= 0:
+            raise Exception("Incorrect value for trace_parts:" + str(trace_parts))
+        if log.shape[0] == 0:
+            raise Exception("Log size is zero")
+        
         self.name_id = name_id
         self.name_traces = name_traces
-        # log["id"]
-        # log["traces"]
-        # log["resourse"]
         encode_activity = list()
         
         if choose_func == 1:
@@ -58,12 +70,13 @@ class LogSplitter:
             len_part = int(max(log[self.name_traces].apply(lambda x: len(x)).mean() * trace_parts, 1))
 
         self.len_part = len_part
+
         id_ref = dict()
 
         for id, trace in zip(log[self.name_id], log[self.name_traces]):
+
             encode_activity.append(np.zeros(self.vector_size))
             start = len(encode_activity) - 1
-
             temp_count = 0
 
             if len(trace) < len_part:
@@ -108,15 +121,16 @@ class LogSplitter:
 
         labels = list()
         
-
         if self.method == "kmeans":
             labels = self.alg_kmeans(encode_activity)
         elif self.method == "dbscan":
-            labels = self.alg_dbscan(encode_activity, eps)
-
+            labels = self.alg_dbscan(encode_activity)
+        else:
+            raise Exception("don't exist method " + self.method)
+        
         self.id_to_class = dict()
-
         self.class_to_is = dict()
+
         for i in range(self.k):
             self.class_to_is[i] = 0
 
@@ -134,7 +148,7 @@ class LogSplitter:
         return
 
     '''
-        Kmeans algorythm from sklearn
+        Kmeans алгоритм из sklearn
     '''
 
     def alg_kmeans(self, encode_activity):
@@ -144,17 +158,16 @@ class LogSplitter:
         return model.fit_predict(encode_activity)
 
     '''
-        DBSCAN algorythm from sklearn
+        DBSCAN алгоритм из  sklearn
     '''
 
-    def alg_dbscan(self, encode_activity, eps):
+    def alg_dbscan(self, encode_activity):
 
-       # model = HDBSCAN(eps=0.1, min_samples=5, metric="cosine")
-        model = HDBSCAN(min_cluster_size=5, metric="cosine")
+        model = DBSCAN(min_cluster_size=5, metric="cosine")
         return model.fit_predict(encode_activity)
 
     '''
-        Split event logs into sub logs
+        Разделение журнала событий на поджурналы и сохранение в dataframe
     '''
 
     def get_logs(self, event_log):
@@ -166,7 +179,7 @@ class LogSplitter:
         return self.event_logs
 
     '''
-        save as csv splitting event logs into sub logs
+        Сохранение журнала событий каак csv файла + его автоматическое разделение
     '''
 
     def save_as_csv(self, event_log, path=""):

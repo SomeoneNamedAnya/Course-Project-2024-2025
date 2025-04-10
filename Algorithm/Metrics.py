@@ -5,11 +5,18 @@ import pandas as pd
 
 
 class Metric:
-
+    '''
+        Класс отвечающий за подсчет метрик E-Cardoso и P/T-CD
+    '''
     def __init__(self):
         self.petri_net = list()
         return
     
+    '''
+        Вспомогательный класс сделанный для ускорения подсчета группы метрик для моделей
+        (Сохраняет группу журналов и далее можно сколько угодно считать для них метрики, 
+        сеть Петри не будет строиться заново)
+    '''
     def make_petri_net(self, list_of_df):
         self.petri_net.clear()
         for df in list_of_df:
@@ -20,7 +27,9 @@ class Metric:
                 timestamp_key='time:timestamp',
                 noise_threshold = 0.2
             ))
-    
+    '''
+        Класс для подсчета метрики P/T-CD, передовать список из журналов - DataFrame
+    '''
     def pt_cd(self, list_of_df):
         ans = list()
         weight = list()
@@ -46,7 +55,10 @@ class Metric:
         
 
         return (ans, ans.mean(), weight_ans.sum() / weight.sum())
-
+    
+    '''
+        Класс для подсчета метрики E-Cardoso, передовать список из журналов - DataFrame
+    '''
     def e_cardoso(self, list_of_df):
         ans = list()
         weight = list()
